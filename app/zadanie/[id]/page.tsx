@@ -23,6 +23,11 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
   const [task, setTask] = useState<Task | null>(null)
   const [taskDetails, setTaskDetails] = useState<OpenTask | TrueFalseTask[] | ChoiceOption[] | FillInTask[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [canvasImage, setCanvasImage] = useState<string | null>(null);
+
+  const handleCanvasExport = (dataUrl: string) => {
+    setCanvasImage(dataUrl);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,7 +154,7 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
   }
 
   return (
-    <div className="grow flex flex-col">
+    <div className="grow flex flex-col max-h-screen">
       <div className="p-4 border-b bg-white flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center">
           <Button
@@ -188,6 +193,14 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
                 taskType={formattedProblem.taskType as TaskType}
                 options={formattedProblem.options}
                 onSubmit={handleSubmitAnswer}
+                canvasImage={canvasImage}
+                getCanvasImage={() => {
+                  // Call the export function we exposed on the window
+                  if (typeof window !== 'undefined' && window.exportWhiteboardCanvas) {
+                    return window.exportWhiteboardCanvas();
+                  }
+                  return null;
+                }}
               />
             </div>
           </div>

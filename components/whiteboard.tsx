@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Pencil, Eraser, Trash2, Undo, Redo } from "lucide-react"
 
-export default function Whiteboard() {
+// Add a new interface for the component props
+interface WhiteboardProps {
+  onExportCanvas?: (dataUrl: string) => void;
+}
+
+export default function Whiteboard({ onExportCanvas }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gridCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -281,6 +286,37 @@ export default function Whiteboard() {
     setDrawing(false)
   }
 
+  // Add a new function to export the canvas as PNG
+  const exportCanvasAsPng = () => {
+    if (!canvasRef.current || !gridCanvasRef.current) return null;
+    
+    // Create a temporary canvas to combine grid and drawing
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (!tempCtx) return null;
+    
+    // Set the temp canvas to the same dimensions
+    tempCanvas.width = canvasRef.current.width;
+    tempCanvas.height = canvasRef.current.height;
+    
+    // First draw the grid (background)
+    tempCtx.drawImage(gridCanvasRef.current, 0, 0);
+    
+    // Then draw the user's drawing on top
+    tempCtx.drawImage(canvasRef.current, 0, 0);
+    
+    // Convert to data URL (PNG format)
+    const dataUrl = tempCanvas.toDataURL('image/png');
+    
+    // If callback is provided, pass the data URL
+    if (onExportCanvas) {
+      onExportCanvas(dataUrl);
+    }
+    
+    return dataUrl;
+  };
+
   // Updated grid drawing function to take context and dimensions as parameters
   const drawGrid = (context: CanvasRenderingContext2D, width: number, height: number) => {
     if (!context) return
@@ -344,6 +380,14 @@ export default function Whiteboard() {
     // Restore the drawing state
     context.restore();
   }
+
+  // Expose the export function to parent components
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore - Adding a method to the window for external access
+      window.exportWhiteboardCanvas = exportCanvasAsPng;
+    }
+  }, []);
 
   useEffect(() => {
     if (ctx && canvasRef.current) {

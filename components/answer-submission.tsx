@@ -13,10 +13,17 @@ interface AnswerSubmissionProps {
   taskType: TaskType
   options?: any[]
   onSubmit?: (answer: any) => void
+  canvasImage?: string | null
+  getCanvasImage?: () => string | null
 }
 
-export default function AnswerSubmission({ taskType, options, onSubmit }: AnswerSubmissionProps) {
-  const [openAnswer, setOpenAnswer] = useState("")
+export default function AnswerSubmission({ 
+  taskType, 
+  options, 
+  onSubmit, 
+  canvasImage, 
+  getCanvasImage 
+}: AnswerSubmissionProps) {
   const [fillInAnswers, setFillInAnswers] = useState<Record<string, string>>({})
   const [singleChoiceAnswer, setSingleChoiceAnswer] = useState("")
   const [multipleChoiceAnswers, setMultipleChoiceAnswers] = useState<string[]>([])
@@ -34,9 +41,10 @@ export default function AnswerSubmission({ taskType, options, onSubmit }: Answer
 
     switch (taskType) {
       case "open":
-        answer = openAnswer
-        // For this example, let's say the correct answer is "x = -3 lub x = 0.5"
-        isCorrect = openAnswer.toLowerCase().includes("x = -3") && openAnswer.toLowerCase().includes("0.5")
+        // Send request to AI
+        const capturedImage = getCanvasImage ? getCanvasImage() : canvasImage;
+        answer = { image: capturedImage };
+        console.log(answer, options)
         break
       case "fill_in":
         answer = fillInAnswers
@@ -79,7 +87,6 @@ export default function AnswerSubmission({ taskType, options, onSubmit }: Answer
   const resetAnswer = () => {
     setSubmitted(false)
     setCorrect(null)
-    setOpenAnswer("")
     setSingleChoiceAnswer("")
     setMultipleChoiceAnswers([])
     setFillInAnswers({})
@@ -109,7 +116,7 @@ export default function AnswerSubmission({ taskType, options, onSubmit }: Answer
   const isSubmitDisabled = () => {
     switch (taskType) {
       case "open":
-        return !openAnswer
+        return false
       case "fill_in":
         return options ? !options.every((option) => fillInAnswers[option.id]) : true
       case "single_choice":
@@ -128,8 +135,7 @@ export default function AnswerSubmission({ taskType, options, onSubmit }: Answer
       case "open":
         return (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">Wpisz swoją odpowiedź:</p>
-            <Input value={openAnswer} onChange={(e) => setOpenAnswer(e.target.value)} placeholder="np. x = 2" />
+            <p className="text-sm text-gray-500">Twoja odpowiedź powinna być narysowana na tablicy i zostanie sprawdzona przez sztuczną inteligencję.</p>
           </div>
         )
       case "fill_in":
@@ -223,7 +229,7 @@ export default function AnswerSubmission({ taskType, options, onSubmit }: Answer
 
     switch (taskType) {
       case "open":
-        answerDisplay = <span className="font-medium">{openAnswer}</span>
+        // answerDisplay = <span className="font-medium">{openAnswer}</span>
         break
       case "fill_in":
         answerDisplay = (
