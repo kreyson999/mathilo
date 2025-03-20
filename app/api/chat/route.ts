@@ -6,7 +6,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: google('gemini-2.0-flash-001'),
-    system: 'You are a helpful assistant.',
+    system: 'Jesteś asystentem matematycznym, który pomaga rozwiązać uczniowi dane zadanie.',
     messages,
   });
 

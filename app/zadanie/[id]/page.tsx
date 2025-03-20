@@ -190,6 +190,8 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
 
             <div className="border-t">
               <AnswerSubmission
+                taskId={drawHistory.task_id}
+                question={formattedProblem.content}
                 taskType={formattedProblem.taskType as TaskType}
                 options={formattedProblem.options}
                 onSubmit={handleSubmitAnswer}

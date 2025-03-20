@@ -6,20 +6,24 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, AlertCircle } from "lucide-react"
 import type { TaskType } from "@/database.types"
+import AnswerResultModal from "./answer-result-modal"
 
 interface AnswerSubmissionProps {
+  taskId: number | null
   taskType: TaskType
   options?: any[]
   onSubmit?: (answer: any) => void
   canvasImage?: string | null
   getCanvasImage?: () => string | null
+  question: string
 }
 
 export default function AnswerSubmission({ 
+  taskId,
   taskType, 
   options, 
+  question,
   onSubmit, 
   canvasImage, 
   getCanvasImage 
@@ -30,21 +34,44 @@ export default function AnswerSubmission({
   const [trueFalseAnswers, setTrueFalseAnswers] = useState<Record<string, boolean>>({})
   const [submitted, setSubmitted] = useState(false)
   const [correct, setCorrect] = useState<boolean | null>(null)
+  const [points, setPoints] = useState<number | null>(null)
+  const [reasoning, setReasoning] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // In a real app, this would validate against the correct answer
     // For demo purposes, we'll just simulate a correct answer
-    setSubmitted(true)
-
+    setIsLoading(true)
+    
     let answer
     let isCorrect = false
 
     switch (taskType) {
       case "open":
-        // Send request to AI
         const capturedImage = getCanvasImage ? getCanvasImage() : canvasImage;
         answer = { image: capturedImage };
         console.log(answer, options)
+        try {
+          const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              image: capturedImage,
+              question,
+              options
+            }),
+          });
+          
+          const result = await response.json();
+          isCorrect = result.isCorrect;
+          setPoints(result.points);
+          setReasoning(result.reasoning);
+        } catch (error) {
+          console.error('Error checking answer:', error);
+          isCorrect = false;
+        }
         break
       case "fill_in":
         answer = fillInAnswers
@@ -77,6 +104,8 @@ export default function AnswerSubmission({
     }
 
     setCorrect(isCorrect)
+    setIsLoading(false)
+    setSubmitted(true)
 
     // Call the onSubmit callback if provided
     if (onSubmit) {
@@ -87,10 +116,13 @@ export default function AnswerSubmission({
   const resetAnswer = () => {
     setSubmitted(false)
     setCorrect(null)
+    setPoints(null)
+    setReasoning(null)
     setSingleChoiceAnswer("")
     setMultipleChoiceAnswers([])
     setFillInAnswers({})
     setTrueFalseAnswers({})
+    setIsLoading(false)
   }
 
   const handleMultipleChoiceChange = (value: string) => {
@@ -224,134 +256,35 @@ export default function AnswerSubmission({
     }
   }
 
-  const renderSubmittedAnswer = () => {
-    let answerDisplay
+  // Funkcjonalność renderowania odpowiedzi została przeniesiona do komponentu AnswerResultModal
 
-    switch (taskType) {
-      case "open":
-        // answerDisplay = <span className="font-medium">{openAnswer}</span>
-        break
-      case "fill_in":
-        answerDisplay = (
-          <div className="space-y-1">
-            {options?.map((option, index) => (
-              <div key={option.id}>
-                Pole {index + 1}: <span className="font-medium">{fillInAnswers[option.id]}</span>
-              </div>
-            ))}
-          </div>
-        )
-        break
-      case "single_choice":
-        answerDisplay = <span className="font-medium">{singleChoiceAnswer}</span>
-        break
-      case "multiple_choice":
-        answerDisplay = <span className="font-medium">{multipleChoiceAnswers.join(", ")}</span>
-        break
-      case "true_false":
-        answerDisplay = (
-          <div className="space-y-1">
-            {options
-              ?.sort((a, b) => a.order - b.order)
-              .map((option) => (
-                <div key={option.id}>
-                  {option.statement}:{" "}
-                  <span className="font-medium">{trueFalseAnswers[option.id] ? "Prawda" : "Fałsz"}</span>
-                </div>
-              ))}
-          </div>
-        )
-        break
-      default:
-        answerDisplay = <span>Nieznana odpowiedź</span>
-    }
-
-    return (
-      <div className="space-y-4">
-        <div
-          className={`p-3 rounded-lg ${correct ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
-        >
-          <div className="flex items-start gap-2">
-            {correct ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-            ) : (
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-            )}
-            <div>
-              <p className={`font-medium ${correct ? "text-green-800" : "text-red-800"}`}>
-                {correct ? "Poprawna odpowiedź!" : "Niepoprawna odpowiedź"}
-              </p>
-              <div className="text-sm mt-1">Twoja odpowiedź: {answerDisplay}</div>
-              {!correct && (
-                <div className="text-sm mt-2">
-                  <p>Prawidłowa odpowiedź:</p>
-                  {renderCorrectAnswer()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={resetAnswer}>
-          Spróbuj ponownie
-        </Button>
-      </div>
-    )
-  }
-
-  const renderCorrectAnswer = () => {
-    // This would come from the database in a real app
-    switch (taskType) {
-      case "open":
-        return <span className="font-medium">x = -3 lub x = 0.5</span>
-      case "fill_in":
-        return (
-          <div className="space-y-1">
-            {options?.map((option, index) => (
-              <div key={option.id}>
-                Pole {index + 1}: <span className="font-medium">{option.correctAnswer}</span>
-              </div>
-            ))}
-          </div>
-        )
-      case "single_choice":
-        const correctOption = options?.find((option) => option.isCorrect)
-        return <span className="font-medium">{correctOption?.value || "B"}</span>
-      case "multiple_choice":
-        const correctOptions = options?.filter((option) => option.isCorrect).map((option) => option.value)
-        return <span className="font-medium">{correctOptions?.join(", ") || "A, C"}</span>
-      case "true_false":
-        return (
-          <div className="space-y-1">
-            {options
-              ?.sort((a, b) => a.order - b.order)
-              .map((option) => (
-                <div key={option.id}>
-                  {option.statement}: <span className="font-medium">{option.isTrue ? "Prawda" : "Fałsz"}</span>
-                </div>
-              ))}
-          </div>
-        )
-      default:
-        return <span>Nieznana odpowiedź</span>
-    }
-  }
+  // Funkcjonalność renderowania poprawnej odpowiedzi została przeniesiona do komponentu AnswerResultModal
 
   return (
     <div className="p-4">
       <h3 className="font-medium mb-3">Sprawdź odpowiedź</h3>
 
-      {!submitted ? (
-        <>
-          {renderAnswerInput()}
+      {renderAnswerInput()}
 
-          <Button className="w-full mt-4" onClick={handleSubmit} disabled={isSubmitDisabled()}>
-            Sprawdź odpowiedź
-          </Button>
-        </>
-      ) : (
-        renderSubmittedAnswer()
-      )}
+      <Button className="w-full mt-4" onClick={handleSubmit} disabled={isSubmitDisabled() || isLoading}>
+        {isLoading ? "Sprawdzanie..." : "Sprawdź odpowiedź"}
+      </Button>
+
+      <AnswerResultModal
+        isOpen={submitted && !isLoading}
+        onClose={() => setSubmitted(false)}
+        onReset={resetAnswer}
+        correct={correct}
+        taskType={taskType}
+        options={options}
+        answer={taskType === "open" ? { image: canvasImage || getCanvasImage?.() } : 
+               taskType === "fill_in" ? fillInAnswers :
+               taskType === "single_choice" ? singleChoiceAnswer :
+               taskType === "multiple_choice" ? multipleChoiceAnswers :
+               trueFalseAnswers}
+        points={points}
+        reasoning={reasoning}
+      />
     </div>
   )
 }
