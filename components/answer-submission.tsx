@@ -8,13 +8,15 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import type { TaskType } from "@/database.types"
 import AnswerResultModal from "./answer-result-modal"
+import ReactMarkdown from "react-markdown"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
 
 interface AnswerSubmissionProps {
   taskId: number | null
   taskType: TaskType
   options?: any[]
   onSubmit?: (answer: any) => void
-  canvasImage?: string | null
   getCanvasImage?: () => string | null
   question: string
 }
@@ -25,7 +27,6 @@ export default function AnswerSubmission({
   options, 
   question,
   onSubmit, 
-  canvasImage, 
   getCanvasImage 
 }: AnswerSubmissionProps) {
   const [fillInAnswers, setFillInAnswers] = useState<Record<string, string>>({})
@@ -48,9 +49,8 @@ export default function AnswerSubmission({
 
     switch (taskType) {
       case "open":
-        const capturedImage = getCanvasImage ? getCanvasImage() : canvasImage;
+        const capturedImage = getCanvasImage ? getCanvasImage() : null;
         answer = { image: capturedImage };
-        console.log(answer, options)
         try {
           const response = await fetch(`/api/tasks/${taskId}`, {
             method: 'POST',
@@ -174,9 +174,16 @@ export default function AnswerSubmission({
         return (
           <div className="space-y-3">
             <p className="text-sm text-gray-500">Uzupełnij brakujące elementy:</p>
-            {options?.map((option, index) => (
+            {options?.map((option) => (
               <div key={option.id} className="space-y-1">
-                <Label htmlFor={`fill-in-${option.id}`}>Pole {index + 1}:</Label>
+                <Label htmlFor={`fill-in-${option.id}`}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {option.template}
+                  </ReactMarkdown>
+                  :</Label>
                 <Input
                   id={`fill-in-${option.id}`}
                   value={fillInAnswers[option.id] || ""}
@@ -192,10 +199,17 @@ export default function AnswerSubmission({
           <div className="space-y-3">
             <p className="text-sm text-gray-500">Wybierz prawidłową odpowiedź:</p>
             <RadioGroup value={singleChoiceAnswer} onValueChange={setSingleChoiceAnswer}>
-              {options?.map((option) => (
+              {options?.map((option, index) => (
                 <div key={option.id} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
                   <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value}>{option.label}</Label>
+                  <Label htmlFor={option.value}>{String.fromCharCode(65 + index)}. 
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {option.value}
+                    </ReactMarkdown>
+                  </Label>
                 </div>
               ))}
             </RadioGroup>
@@ -205,14 +219,22 @@ export default function AnswerSubmission({
         return (
           <div className="space-y-3">
             <p className="text-sm text-gray-500">Wybierz wszystkie prawidłowe odpowiedzi:</p>
-            {options?.map((option) => (
+            {options?.map((option, index) => (
               <div key={option.id} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
                 <Checkbox
                   id={option.value}
                   checked={multipleChoiceAnswers.includes(option.value)}
                   onCheckedChange={() => handleMultipleChoiceChange(option.value)}
                 />
-                <Label htmlFor={option.value}>{option.label}</Label>
+                <Label htmlFor={option.value}>
+                  {String.fromCharCode(65 + index)}.
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {option.value}
+                  </ReactMarkdown> 
+                </Label>
               </div>
             ))}
           </div>
@@ -225,7 +247,14 @@ export default function AnswerSubmission({
               ?.sort((a, b) => a.order - b.order)
               .map((option) => (
                 <div key={option.id} className="space-y-2 p-2 border rounded">
-                  <p className="text-sm font-medium">{option.statement}</p>
+                  <p className="text-sm font-medium">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {option.statement}
+                    </ReactMarkdown> 
+                  </p>
                   <RadioGroup
                     value={
                       trueFalseAnswers[option.id] === true
@@ -256,10 +285,6 @@ export default function AnswerSubmission({
     }
   }
 
-  // Funkcjonalność renderowania odpowiedzi została przeniesiona do komponentu AnswerResultModal
-
-  // Funkcjonalność renderowania poprawnej odpowiedzi została przeniesiona do komponentu AnswerResultModal
-
   return (
     <div className="p-4">
       <h3 className="font-medium mb-3">Sprawdź odpowiedź</h3>
@@ -277,7 +302,7 @@ export default function AnswerSubmission({
         correct={correct}
         taskType={taskType}
         options={options}
-        answer={taskType === "open" ? { image: canvasImage || getCanvasImage?.() } : 
+        answer={taskType === "open" ? { image: getCanvasImage?.() } : 
                taskType === "fill_in" ? fillInAnswers :
                taskType === "single_choice" ? singleChoiceAnswer :
                taskType === "multiple_choice" ? multipleChoiceAnswers :

@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +12,9 @@ import {
 import type { TaskType } from "@/database.types"
 import { useTaskGenerator } from "@/hooks/use-task-generator"
 import { useRouter } from "next/navigation"
+import ReactMarkdown from "react-markdown"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
 
 interface AnswerResultModalProps {
   isOpen: boolean
@@ -57,19 +59,39 @@ export default function AnswerResultModal({
       case "fill_in":
         answerDisplay = (
           <div className="space-y-1">
-            {options?.map((option, index) => (
+            {options?.map((option) => (
               <div key={option.id}>
-                Pole {index + 1}: <span className="font-medium">{answer[option.id]}</span>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {option.template}
+                </ReactMarkdown>: 
+                <span className="font-medium">{answer[option.id]}</span>
               </div>
             ))}
           </div>
         )
         break
       case "single_choice":
-        answerDisplay = <span className="font-medium">{answer}</span>
+        answerDisplay = <span className="font-medium">
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {answer}
+          </ReactMarkdown>
+        </span>
         break
       case "multiple_choice":
-        answerDisplay = <span className="font-medium">{answer.join(", ")}</span>
+        answerDisplay = <span className="font-medium">
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {answer.join(", ")}
+          </ReactMarkdown>
+        </span>
         break
       case "true_false":
         answerDisplay = (
@@ -78,7 +100,12 @@ export default function AnswerResultModal({
               ?.sort((a, b) => a.order - b.order)
               .map((option) => (
                 <div key={option.id}>
-                  {option.statement}:{" "}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {option.statement}
+                  </ReactMarkdown>:{" "}
                   <span className="font-medium">{answer[option.id] ? "Prawda" : "Fałsz"}</span>
                 </div>
               ))}
@@ -100,19 +127,39 @@ export default function AnswerResultModal({
       case "fill_in":
         return (
           <div className="space-y-1">
-            {options?.map((option, index) => (
+            {options?.map((option) => (
               <div key={option.id}>
-                Pole {index + 1}: <span className="font-medium">{option.correctAnswer}</span>
+                <ReactMarkdown 
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {option.template}
+                </ReactMarkdown>: 
+                <span className="font-medium">{option.correctAnswer}</span>
               </div>
             ))}
           </div>
         )
       case "single_choice":
         const correctOption = options?.find((option) => option.isCorrect)
-        return <span className="font-medium">{correctOption?.value || "B"}</span>
+        return <span className="font-medium">
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {correctOption?.value}
+          </ReactMarkdown>
+        </span>
       case "multiple_choice":
         const correctOptions = options?.filter((option) => option.isCorrect).map((option) => option.value)
-        return <span className="font-medium">{correctOptions?.join(", ") || "A, C"}</span>
+        return <span className="font-medium">
+          <ReactMarkdown 
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {correctOptions?.join(", ")}
+          </ReactMarkdown>
+        </span>
       case "true_false":
         return (
           <div className="space-y-1">
@@ -120,7 +167,13 @@ export default function AnswerResultModal({
               ?.sort((a, b) => a.order - b.order)
               .map((option) => (
                 <div key={option.id}>
-                  {option.statement}: <span className="font-medium">{option.isTrue ? "Prawda" : "Fałsz"}</span>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {option.statement}
+                  </ReactMarkdown>: 
+                  <span className="font-medium">{option.isTrue ? "Prawda" : "Fałsz"}</span>
                 </div>
               ))}
           </div>

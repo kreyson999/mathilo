@@ -10,9 +10,12 @@ import { ArrowLeft } from "lucide-react"
 import { getDrawHistoryById } from "@/lib/db/draw-history/queries"
 import { getTaskById, getTaskDetails } from "@/lib/db/tasks/queries"
 import { toast } from "@/components/ui/use-toast"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { DrawHistoryWithRelations } from "@/lib/db/draw-history/types"
 import { ChoiceOption, FillInTask, OpenTask, Task, TrueFalseTask } from "@/lib/db/tasks/types"
+import ReactMarkdown from "react-markdown"
+import remarkMath from "remark-math"
+import rehypeKatex from "rehype-katex"
+import 'katex/dist/katex.min.css'
 
 export type TaskType = "single_choice" | "multiple_choice" | "true_false" | "fill_in" | "open"
 
@@ -23,11 +26,6 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
   const [task, setTask] = useState<Task | null>(null)
   const [taskDetails, setTaskDetails] = useState<OpenTask | TrueFalseTask[] | ChoiceOption[] | FillInTask[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [canvasImage, setCanvasImage] = useState<string | null>(null);
-
-  const handleCanvasExport = (dataUrl: string) => {
-    setCanvasImage(dataUrl);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,17 +116,15 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
     switch (type) {
       case "single_choice":
       case "multiple_choice":
-        return details.map((option: any, index: number) => {
-          const letter = String.fromCharCode(65 + index) // A, B, C, D...
+        return details.map((option: any) => {
           return {
             id: option.id,
-            label: `${letter}. ${option.content}`,
-            value: letter,
+            value: option.content,
             isCorrect: option.is_correct,
           }
         })
       case "true_false":
-        return details.map((statement: any, index: number) => ({
+        return details.map((statement: any) => ({
           id: statement.id,
           statement: statement.statement,
           isTrue: statement.is_true,
@@ -172,7 +168,15 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
                 {formattedProblem.source}
               </span>
             </div> */}
-            <p className="text-lg">{formattedProblem.content}</p>
+            
+            <p className="text-lg">
+              <ReactMarkdown 
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {formattedProblem.content}
+              </ReactMarkdown>
+            </p>
           </div>
         </div>
       </div>
@@ -195,7 +199,6 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
                 taskType={formattedProblem.taskType as TaskType}
                 options={formattedProblem.options}
                 onSubmit={handleSubmitAnswer}
-                canvasImage={canvasImage}
                 getCanvasImage={() => {
                   // Call the export function we exposed on the window
                   if (typeof window !== 'undefined' && window.exportWhiteboardCanvas) {
