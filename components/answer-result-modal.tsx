@@ -218,7 +218,12 @@ export default function AnswerResultModal({
                 {taskType === "open" && reasoning && (
                   <div className="text-sm mt-2 p-2 bg-gray-50 rounded border border-gray-200">
                     <p className="font-medium mb-1">Uzasadnienie:</p>
-                    <p>{reasoning}</p>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {reasoning}
+                    </ReactMarkdown>
                   </div>
                 )}
                 

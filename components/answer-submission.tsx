@@ -22,6 +22,7 @@ interface AnswerSubmissionProps {
   question: string
   onSubmit?: (answer: any) => void
   getCanvasImage?: () => string | null
+  savedAnswer?: UserAnswer | null
 }
 
 export default function AnswerSubmission({ 
@@ -31,16 +32,28 @@ export default function AnswerSubmission({
   options, 
   question,
   onSubmit, 
-  getCanvasImage 
+  getCanvasImage,
+  savedAnswer 
 }: AnswerSubmissionProps) {
-  const [fillInAnswers, setFillInAnswers] = useState<Record<string, string>>({})
-  const [singleChoiceAnswer, setSingleChoiceAnswer] = useState("")
-  const [multipleChoiceAnswers, setMultipleChoiceAnswers] = useState<string[]>([])
-  const [trueFalseAnswers, setTrueFalseAnswers] = useState<Record<string, boolean>>({})
-  const [submitted, setSubmitted] = useState(false)
-  const [correct, setCorrect] = useState<boolean | null>(null)
-  const [points, setPoints] = useState<number | null>(null)
-  const [reasoning, setReasoning] = useState<string | null>(null)
+  // Initialize form state with saved answer data if it exists
+  const [fillInAnswers, setFillInAnswers] = useState<Record<string, string>>(
+    savedAnswer && savedAnswer.taskType === "fill_in" ? savedAnswer.answer : {}
+  )
+  const [singleChoiceAnswer, setSingleChoiceAnswer] = useState(
+    savedAnswer && savedAnswer.taskType === "single_choice" ? savedAnswer.answer : ""
+  )
+  const [multipleChoiceAnswers, setMultipleChoiceAnswers] = useState<string[]>(
+    savedAnswer && savedAnswer.taskType === "multiple_choice" ? savedAnswer.answer : []
+  )
+  const [trueFalseAnswers, setTrueFalseAnswers] = useState<Record<string, boolean>>(
+    savedAnswer && savedAnswer.taskType === "true_false" ? savedAnswer.answer : {}
+  )
+  
+  // Initialize result state with saved answer data if it exists
+  const [submitted, setSubmitted] = useState(savedAnswer ? true : false)
+  const [correct, setCorrect] = useState<boolean | null>(savedAnswer ? savedAnswer.isCorrect : null)
+  const [points, setPoints] = useState<number | null>(savedAnswer ? savedAnswer.points || null : null)
+  const [reasoning, setReasoning] = useState<string | null>(savedAnswer ? savedAnswer.reasoning || null : null)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async () => {
@@ -49,11 +62,11 @@ export default function AnswerSubmission({
     let answer
     let isCorrect = false
     let earnedPoints = 0
+    let reasoningResponse: string | null = null
 
     switch (taskType) {
       case "open":
         const capturedImage = getCanvasImage ? getCanvasImage() : null;
-        answer = { image: capturedImage };
         try {
           const response = await fetch(`/api/tasks/${taskId}`, {
             method: 'POST',
@@ -70,8 +83,7 @@ export default function AnswerSubmission({
           const result = await response.json();
           isCorrect = result.isCorrect;
           earnedPoints = result.points || 0;
-          setPoints(earnedPoints);
-          setReasoning(result.reasoning);
+          reasoningResponse = result.reasoning;
         } catch (error) {
           console.error('Error checking answer:', error);
           isCorrect = false;
@@ -119,6 +131,7 @@ export default function AnswerSubmission({
 
     setCorrect(isCorrect)
     setPoints(earnedPoints)
+    setReasoning(reasoningResponse)
     setIsLoading(false)
     setSubmitted(true)
 
@@ -129,7 +142,7 @@ export default function AnswerSubmission({
         answer,
         isCorrect,
         points: earnedPoints,
-        reasoning: reasoning ?? undefined
+        reasoning: reasoningResponse ?? undefined
       }
       
       await saveUserAnswer(taskStatusId, userAnswer)
@@ -323,7 +336,7 @@ export default function AnswerSubmission({
       {renderAnswerInput()}
 
       <Button className="w-full mt-4" onClick={handleSubmit} disabled={isSubmitDisabled() || isLoading}>
-        {isLoading ? "Sprawdzanie..." : "Sprawdź odpowiedź"}
+        {isLoading ? "Sprawdzanie..." : savedAnswer ? "Sprawdź ponownie" : "Sprawdź odpowiedź"}
       </Button>
 
       <AnswerResultModal

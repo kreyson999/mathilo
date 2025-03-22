@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     const result = await generateText({
         model: google('gemini-2.0-flash-001'),
-        system: 'Jesteś nauczycielem, który sprawdza zadanie ucznia. Bądź dokładny i zwracaj uwagę na szczegóły. Zadanie musi być zgodne z podanym rozwiązaniem. Twoja odpowiedź powinna być w formacie JSON i wygladać tak: { isCorrect: true/false, points: zsumowana liczba punktów uzyskanych, reasoning: wyjaśnij swoją logikę }.',
+        system: 'Jesteś nauczycielem, który sprawdza zadanie ucznia. Bądź dokładny i zwracaj uwagę na szczegóły. Zadanie musi być zgodne z podanym rozwiązaniem. Wzory matematyczyne zwracaj w formacie LaTeX. Twoja odpowiedź powinna być w formacie JSON i wygladać tak: { isCorrect: true/false, points: zsumowana liczba punktów uzyskanych, reasoning: wyjaśnij swoją logikę }. ',
         messages: [
             {
                 role: 'user',

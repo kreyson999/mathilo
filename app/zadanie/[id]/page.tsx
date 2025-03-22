@@ -10,7 +10,7 @@ import { ArrowLeft } from "lucide-react"
 import { getTaskStatusById } from "@/lib/db/task-statuses/queries"
 import { getTaskById, getTaskDetails } from "@/lib/db/tasks/queries"
 import { toast } from "@/components/ui/use-toast"
-import { TaskStatusWithRelations } from "@/lib/db/task-statuses/types"
+import { AiMessage, TaskStatusWithRelations, UserAnswer } from "@/lib/db/task-statuses/types"
 import { ChoiceOption, FillInTask, OpenTask, Task, TrueFalseTask } from "@/lib/db/tasks/types"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
@@ -183,7 +183,7 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
         <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l">
           <div className="h-full flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <AiChat problem={formattedProblem} />
+              <AiChat taskStatusId={taskStatus.id} savedMessages={taskStatus.ai_messages as AiMessage[] | null} problem={formattedProblem} />
             </div>
 
             <div className="border-t">
@@ -194,6 +194,7 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
                 taskType={formattedProblem.taskType as TaskType}
                 options={formattedProblem.options}
                 onSubmit={handleSubmitAnswer}
+                savedAnswer={taskStatus.user_answers as UserAnswer | null}
                 getCanvasImage={() => {
                   // Call the export function we exposed on the window
                   if (typeof window !== 'undefined' && window.exportWhiteboardCanvas) {

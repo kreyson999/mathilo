@@ -10,6 +10,8 @@ import type { TaskType } from "@/lib/db/tasks/types"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
+import { saveAiMessages } from "@/lib/db/task-statuses/queries"
+import type { AiMessage } from "@/lib/db/task-statuses/types"
 
 interface Problem {
   id: string,
@@ -19,11 +21,12 @@ interface Problem {
 }
 
 interface AiChatProps {
+  savedMessages: AiMessage[] | null
   problem: Problem;
-  taskStatusId?: number;
+  taskStatusId: number;
 }
 
-export default function AiChat({ problem, taskStatusId }: AiChatProps) {
+export default function AiChat({ problem, savedMessages, taskStatusId }: AiChatProps) {
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     initialMessages: [
       {
@@ -34,10 +37,57 @@ export default function AiChat({ problem, taskStatusId }: AiChatProps) {
         Dawaj wskazówki krok po kroku, nie podawaj od razu pełnego rozwiązania.
         Używaj notacji LaTeX do formatowania wzorów matematycznych, np. $x(x - 6) \\leq 7$.`,
       },
+      // Convert savedMessages to the format expected by useChat
+      ...(savedMessages ?? []).map((msg, index) => ({
+        id: `saved-${index + 2}`, // Start from 2 since 1 is used by system message
+        role: msg.role,
+        content: msg.content
+      }))
     ],
   })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Save messages to database whenever they change
+  // Reference to track previous status
+  const prevStatusRef = useRef(status)
+  // Reference to track if we've already saved this set of messages
+  const lastSavedLengthRef = useRef(savedMessages ? savedMessages.length + 1 : 0)
+
+  // Save messages to database only when needed
+  useEffect(() => {
+    // Only save if we have a taskStatusId and at least one non-system message
+    if (!taskStatusId || messages.length <= 1) return;
+    
+    // Save messages when:
+    // 1. Status changes from 'streaming' to 'ready' (AI finished responding)
+    // 2. New user message is added (when status is 'ready' but messages length changed)
+    // 3. Skip initial load with saved messages
+    const shouldSave = 
+      (prevStatusRef.current === 'streaming' && status === 'ready') || 
+      (status === 'ready' && messages.length > lastSavedLengthRef.current);
+    
+    if (shouldSave) {
+      // Convert messages to AiMessage format
+      const aiMessages: AiMessage[] = messages
+        .filter(msg => msg.role !== 'system') // Exclude system messages
+        .map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date().toISOString()
+        }))
+      
+      // Save messages to database
+      saveAiMessages(taskStatusId, aiMessages)
+        .catch(error => console.error('Error saving AI messages:', error))
+      
+      // Update last saved length
+      lastSavedLengthRef.current = messages.length
+    }
+    
+    // Update previous status
+    prevStatusRef.current = status
+  }, [messages, status, taskStatusId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
