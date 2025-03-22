@@ -1,5 +1,7 @@
 import type { Database } from "@/database.types"
 
+export type TaskType = Database["public"]["Enums"]["task_type"]
+
 // Type definitions for our tasks
 export type Category = Database["public"]["Tables"]["categories"]["Row"]
 export type Task = Database["public"]["Tables"]["tasks"]["Row"]

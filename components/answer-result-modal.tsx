@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import type { TaskType } from "@/database.types"
+import type { TaskType } from "@/lib/db/tasks/types"
 import { useTaskGenerator } from "@/hooks/use-task-generator"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"

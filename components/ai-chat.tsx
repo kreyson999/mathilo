@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useChat } from "@ai-sdk/react"
 import { SendIcon } from "lucide-react"
-import { TaskType } from "@/database.types"
+import type { TaskType } from "@/lib/db/tasks/types"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
@@ -18,7 +18,12 @@ interface Problem {
   // options: taskDetails ? formatTaskDetails(task.type, taskDetails) : undefined,
 }
 
-export default function AiChat({ problem }: { problem: Problem }) {
+interface AiChatProps {
+  problem: Problem;
+  taskStatusId?: number;
+}
+
+export default function AiChat({ problem, taskStatusId }: AiChatProps) {
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     initialMessages: [
       {

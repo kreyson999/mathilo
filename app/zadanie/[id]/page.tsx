@@ -7,10 +7,10 @@ import AiChat from "@/components/ai-chat"
 import AnswerSubmission from "@/components/answer-submission"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
-import { getDrawHistoryById } from "@/lib/db/draw-history/queries"
+import { getTaskStatusById } from "@/lib/db/task-statuses/queries"
 import { getTaskById, getTaskDetails } from "@/lib/db/tasks/queries"
 import { toast } from "@/components/ui/use-toast"
-import { DrawHistoryWithRelations } from "@/lib/db/draw-history/types"
+import { TaskStatusWithRelations } from "@/lib/db/task-statuses/types"
 import { ChoiceOption, FillInTask, OpenTask, Task, TrueFalseTask } from "@/lib/db/tasks/types"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
@@ -22,7 +22,7 @@ export type TaskType = "single_choice" | "multiple_choice" | "true_false" | "fil
 export default function TaskPage(props: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const params = use<{ id: string }>(props.params);
-  const [drawHistory, setDrawHistory] = useState<DrawHistoryWithRelations | null>(null)
+  const [taskStatus, setTaskStatus] = useState<TaskStatusWithRelations | null>(null)
   const [task, setTask] = useState<Task | null>(null)
   const [taskDetails, setTaskDetails] = useState<OpenTask | TrueFalseTask[] | ChoiceOption[] | FillInTask[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,32 +32,28 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
       setLoading(true)
       try {
         // Parse the draw history ID
-        const drawHistoryId = Number.parseInt(params.id)
-        if (isNaN(drawHistoryId)) {
+        const taskStatusId = Number.parseInt(params.id)
+        if (isNaN(taskStatusId)) {
           throw new Error("Invalid draw history ID")
         }
 
-        // Fetch the draw history record
-        const drawHistoryRecord = await getDrawHistoryById(drawHistoryId)
-        if (!drawHistoryRecord) {
-          throw new Error("Draw history record not found")
+        // Fetch the task status record
+        const taskStatusRecord = await getTaskStatusById(taskStatusId)
+        if (!taskStatusRecord) {
+          throw new Error("Task status record not found")
         }
-        setDrawHistory(drawHistoryRecord)
+        setTaskStatus(taskStatusRecord)
 
-        // If it's a task draw, fetch the task
-        if (!drawHistoryRecord.is_sheet && drawHistoryRecord.task_id) {
-          const task = await getTaskById(drawHistoryRecord.task_id)
-          if (!task) {
-            throw new Error("Task not found")
-          }
-          setTask(task)
-
-          // Fetch task details based on task type
-          const details = await getTaskDetails(task.id, task.type)
-          setTaskDetails(details)
-        } else {
-          throw new Error("Sheet draws are not supported on this page")
+        // Fetch the task
+        const task = await getTaskById(taskStatusRecord.task_id)
+        if (!task) {
+          throw new Error("Task not found")
         }
+        setTask(task)
+
+        // Fetch task details based on task type
+        const details = await getTaskDetails(task.id, task.type)
+        setTaskDetails(details)
       } catch (error) {
         console.error("Error fetching data:", error)
         toast({
@@ -92,7 +88,7 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
     )
   }
 
-  if (!task || !drawHistory) {
+  if (!task || !taskStatus) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
@@ -162,21 +158,19 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
             <ArrowLeft />
           </Button>
 
-          <div>
+          <div className="text-lg">
             {/* <div>
               <span className="text-sm text-gray-500">
                 {formattedProblem.source}
               </span>
             </div> */}
             
-            <p className="text-lg">
-              <ReactMarkdown 
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {formattedProblem.content}
-              </ReactMarkdown>
-            </p>
+            <ReactMarkdown 
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {formattedProblem.content}
+            </ReactMarkdown>
           </div>
         </div>
       </div>
@@ -194,7 +188,8 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
 
             <div className="border-t">
               <AnswerSubmission
-                taskId={drawHistory.task_id}
+                taskId={taskStatus.task_id}
+                taskStatusId={taskStatus.id}
                 question={formattedProblem.content}
                 taskType={formattedProblem.taskType as TaskType}
                 options={formattedProblem.options}

@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import type { TaskType } from "@/database.types"
+import type { TaskType } from "@/lib/db/tasks/types"
+import { saveUserAnswer } from "@/lib/db/task-statuses/queries"
+import { UserAnswer } from "@/lib/db/task-statuses/types"
 import AnswerResultModal from "./answer-result-modal"
 import ReactMarkdown from "react-markdown"
 import remarkMath from "remark-math"
@@ -14,15 +16,17 @@ import rehypeKatex from "rehype-katex"
 
 interface AnswerSubmissionProps {
   taskId: number | null
+  taskStatusId: number
   taskType: TaskType
   options?: any[]
+  question: string
   onSubmit?: (answer: any) => void
   getCanvasImage?: () => string | null
-  question: string
 }
 
 export default function AnswerSubmission({ 
   taskId,
+  taskStatusId,
   taskType, 
   options, 
   question,
@@ -40,12 +44,11 @@ export default function AnswerSubmission({
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async () => {
-    // In a real app, this would validate against the correct answer
-    // For demo purposes, we'll just simulate a correct answer
     setIsLoading(true)
     
     let answer
     let isCorrect = false
+    let earnedPoints = 0
 
     switch (taskType) {
       case "open":
@@ -66,7 +69,8 @@ export default function AnswerSubmission({
           
           const result = await response.json();
           isCorrect = result.isCorrect;
-          setPoints(result.points);
+          earnedPoints = result.points || 0;
+          setPoints(earnedPoints);
           setReasoning(result.reasoning);
         } catch (error) {
           console.error('Error checking answer:', error);
@@ -75,28 +79,38 @@ export default function AnswerSubmission({
         break
       case "fill_in":
         answer = fillInAnswers
-        // Check if all fill-in answers are correct
-        isCorrect =
-          options?.every((option) => fillInAnswers[option.id]?.toLowerCase() === option.correctAnswer.toLowerCase()) ||
-          false
+        const correctAnswersCount = options?.reduce((count, option) => {
+          const isAnswerCorrect = fillInAnswers[option.id]?.toLowerCase() === option.correctAnswer.toLowerCase();
+          return isAnswerCorrect ? count + 1 : count;
+        }, 0) || 0;
+        
+        earnedPoints = correctAnswersCount;
+        isCorrect = correctAnswersCount === options?.length;
         break
       case "single_choice":
         answer = singleChoiceAnswer
-        // Check if the selected option is correct
         isCorrect = options?.find((option) => option.value === singleChoiceAnswer)?.isCorrect || false
+        earnedPoints = isCorrect ? 1 : 0;
         break
       case "multiple_choice":
         answer = multipleChoiceAnswers
-        // Check if all and only correct options are selected
         const correctOptions = options?.filter((option) => option.isCorrect).map((option) => option.value) || []
+        const correctSelectedCount = multipleChoiceAnswers.filter(answer => correctOptions.includes(answer)).length
+        
+        earnedPoints = correctSelectedCount
+        
         isCorrect =
           correctOptions.length === multipleChoiceAnswers.length &&
           correctOptions.every((option) => multipleChoiceAnswers.includes(option))
         break
       case "true_false":
         answer = trueFalseAnswers
-        // Check if all true/false answers are correct
-        isCorrect = options?.every((option) => trueFalseAnswers[option.id] === option.isTrue) || false
+        const correctTrueFalseCount = options?.reduce((count, option) => {
+          return trueFalseAnswers[option.id] === option.isTrue ? count + 1 : count;
+        }, 0) || 0;
+        
+        earnedPoints = correctTrueFalseCount;
+        isCorrect = correctTrueFalseCount === options?.length;
         break
       default:
         answer = null
@@ -104,8 +118,24 @@ export default function AnswerSubmission({
     }
 
     setCorrect(isCorrect)
+    setPoints(earnedPoints)
     setIsLoading(false)
     setSubmitted(true)
+
+    // Save user answer to the database
+    try {
+      const userAnswer: UserAnswer = {
+        taskType,
+        answer,
+        isCorrect,
+        points: earnedPoints,
+        reasoning: reasoning ?? undefined
+      }
+      
+      await saveUserAnswer(taskStatusId, userAnswer)
+    } catch (error) {
+      console.error('Error saving user answer:', error)
+    }
 
     // Call the onSubmit callback if provided
     if (onSubmit) {
@@ -202,7 +232,8 @@ export default function AnswerSubmission({
               {options?.map((option, index) => (
                 <div key={option.id} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
                   <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value}>{String.fromCharCode(65 + index)}. 
+                  <Label htmlFor={option.value} className="flex gap-1">
+                    {String.fromCharCode(65 + index)}.
                     <ReactMarkdown 
                       remarkPlugins={[remarkMath]}
                       rehypePlugins={[rehypeKatex]}
@@ -226,7 +257,7 @@ export default function AnswerSubmission({
                   checked={multipleChoiceAnswers.includes(option.value)}
                   onCheckedChange={() => handleMultipleChoiceChange(option.value)}
                 />
-                <Label htmlFor={option.value}>
+                <Label htmlFor={option.value} className="flex gap-1">
                   {String.fromCharCode(65 + index)}.
                   <ReactMarkdown 
                     remarkPlugins={[remarkMath]}
@@ -247,14 +278,14 @@ export default function AnswerSubmission({
               ?.sort((a, b) => a.order - b.order)
               .map((option) => (
                 <div key={option.id} className="space-y-2 p-2 border rounded">
-                  <p className="text-sm font-medium">
+                  <div className="text-sm font-medium">
                     <ReactMarkdown 
                       remarkPlugins={[remarkMath]}
                       rehypePlugins={[rehypeKatex]}
                     >
                       {option.statement}
                     </ReactMarkdown> 
-                  </p>
+                  </div>
                   <RadioGroup
                     value={
                       trueFalseAnswers[option.id] === true

@@ -9,10 +9,10 @@ import { Pencil, Eraser, Trash2, Undo, Redo } from "lucide-react"
 
 // Add a new interface for the component props
 interface WhiteboardProps {
-  onExportCanvas?: (dataUrl: string) => void;
+  taskStatusId?: number;
 }
 
-export default function Whiteboard({ onExportCanvas }: WhiteboardProps) {
+export default function Whiteboard({ taskStatusId }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gridCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -25,8 +25,6 @@ export default function Whiteboard({ onExportCanvas }: WhiteboardProps) {
   const [prevPos, setPrevPos] = useState({ x: 0, y: 0 })
   const [canvasHistory, setCanvasHistory] = useState<ImageData[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
 
   const colors = [
     "#000000", // Black
@@ -308,11 +306,6 @@ export default function Whiteboard({ onExportCanvas }: WhiteboardProps) {
     
     // Convert to data URL (PNG format)
     const dataUrl = tempCanvas.toDataURL('image/png');
-    
-    // If callback is provided, pass the data URL
-    if (onExportCanvas) {
-      onExportCanvas(dataUrl);
-    }
     
     return dataUrl;
   };

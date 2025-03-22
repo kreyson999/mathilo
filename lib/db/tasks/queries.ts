@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import type { TaskType } from "@/database.types"
+import type { TaskType } from "@/lib/db/tasks/types"
 import type { Category, Task, ChoiceOption, FillInTask, TrueFalseTask, OpenTask } from "./types"
 
 // Function to get all categories

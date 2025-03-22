@@ -4,9 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
 import { getRandomTasks } from "@/lib/db/tasks/queries"
-import { recordDraw } from "@/lib/db/draw-history/queries"
+import { recordTaskStatus } from "@/lib/db/task-statuses/queries"
 import { toast } from "@/components/ui/use-toast"
-import type { TaskType } from "@/database.types"
+import type { TaskType } from "@/lib/db/tasks/types"
 
 type TaskGeneratorOptions = {
   onLoginRequired?: () => void
@@ -51,8 +51,8 @@ export function useTaskGenerator(options?: TaskGeneratorOptions) {
 
       const randomTask = randomTasks[0]
 
-      // Record the draw in history and wait for it to complete
-      const drawRecord = await recordDraw(user.id, false, randomTask.id)
+      // Record the task status and wait for it to complete
+      const drawRecord = await recordTaskStatus(user.id, randomTask.id)
 
       if (!drawRecord) {
         throw new Error("Nie udało się zapisać historii losowania")

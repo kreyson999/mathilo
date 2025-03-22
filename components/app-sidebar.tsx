@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useAuth } from "@/components/auth/auth-provider"
-import { getUserDrawHistory } from "@/lib/db/draw-history/queries"
+import { getUserTaskStatuses } from "@/lib/db/task-statuses/queries"
 import { useTaskGenerator } from "@/hooks/use-task-generator"
 import { UserNav } from "@/components/user-nav"
 
@@ -46,21 +46,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
 
   useEffect(() => {
-    const fetchDrawHistory = async () => {
+    const fetchTaskStatuses = async () => {
       if (!user) return
 
       setIsLoading(true)
       try {
-        const history = await getUserDrawHistory(user.id, 20) // Get last 20 items
+        const history = await getUserTaskStatuses(user.id, 20) // Get last 20 items
         setHistoryItems(history)
       } catch (error) {
-        console.error("Error fetching draw history:", error)
+        console.error("Error fetching task statuses:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchDrawHistory()
+    fetchTaskStatuses()
   }, [user])
 
   // Function to truncate text to a certain length
@@ -139,19 +139,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                           </div>
                         ) : (
-                          historyItems.map((item) => (
-                            <SidebarMenuSubItem key={item.id}>
-                              <SidebarMenuSubButton asChild>
-                                <Link href={`/zadanie/${item.id}`}>
-                                  <span className="text-sm font-medium">
-                                    {item.is_sheet
-                                      ? truncateText(item.sheets?.name || "Arkusz")
-                                      : truncateText(item.tasks?.content || "Zadanie")}
-                                  </span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))
+                          historyItems.map((item) => {
+                            // Determine text color based on completion status and points
+                            let textColorClass = "";
+                            if (item.is_completed) {
+                              // If task is completed, check points
+                              if (item.received_points === item.tasks?.max_points) {
+                                textColorClass = "text-green-600";
+                              } else {
+                                textColorClass = "text-red-600";
+                              }
+                            }
+                            
+                            return (
+                              <SidebarMenuSubItem key={item.id}>
+                                <SidebarMenuSubButton asChild>
+                                  <Link href={`/zadanie/${item.id}`}>
+                                    <span className={`text-sm font-medium ${textColorClass}`}>
+                                      {truncateText(item.tasks?.content || "Zadanie")}
+                                    </span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })
                         )}
                       </SidebarMenuSub>
                     </CollapsibleContent>
