@@ -177,7 +177,7 @@ export default function TaskPage(props: { params: Promise<{ id: string }> }) {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <div className="flex-1 h-full lg:h-auto overflow-hidden">
-          <Whiteboard />
+          <Whiteboard taskStatusId={taskStatus.id} savedCanvasData={taskStatus.canvas_data} />
         </div>
 
         <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l">

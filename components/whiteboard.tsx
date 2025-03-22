@@ -5,14 +5,16 @@ import type React from "react"
 import { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Pencil, Eraser, Trash2, Undo, Redo } from "lucide-react"
+import { Pencil, Eraser, Trash2, Undo, Redo, Save } from "lucide-react"
+import { saveCanvasData } from "@/lib/db/task-statuses/queries"
 
 // Add a new interface for the component props
 interface WhiteboardProps {
   taskStatusId?: number;
+  savedCanvasData: string | null;
 }
 
-export default function Whiteboard({ taskStatusId }: WhiteboardProps) {
+export default function Whiteboard({ taskStatusId, savedCanvasData }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gridCanvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -374,13 +376,75 @@ export default function Whiteboard({ taskStatusId }: WhiteboardProps) {
     context.restore();
   }
 
-  // Expose the export function to parent components
+  // Expose the export function and save function to parent components
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // @ts-ignore - Adding a method to the window for external access
+      // @ts-ignore - Adding methods to the window for external access
       window.exportWhiteboardCanvas = exportCanvasAsPng;
+      // @ts-ignore - Adding save method to the window for external access
+      window.saveWhiteboardCanvas = saveToDatabase;
     }
   }, []);
+  
+  // Save canvas data to database
+  const saveToDatabase = async () => {
+    if (!taskStatusId) return;
+    
+    const dataUrl = exportCanvasAsPng();
+    if (dataUrl) {
+      try {
+        await saveCanvasData(taskStatusId, dataUrl);
+        console.log('Canvas saved successfully');
+      } catch (error) {
+        console.error('Error saving canvas:', error);
+      }
+    }
+  };
+  
+  // Auto-save canvas data when drawing stops
+  useEffect(() => {
+    if (!drawing && taskStatusId && canvasHistory.length > 1) {
+      const timer = setTimeout(() => {
+        saveToDatabase();
+      }, 1000); // Save 1 second after drawing stops
+      
+      return () => clearTimeout(timer);
+    }
+  }, [drawing, taskStatusId, canvasHistory.length]);
+  
+  // Load canvas data from database
+  useEffect(() => {
+    const loadCanvasData = async () => {
+      if (!taskStatusId || !ctx || !canvasRef.current) return;
+      
+      try {
+        
+        if (!savedCanvasData) {
+          console.error('Error loading canvas data.');
+          return;
+        }
+        
+        const img = new Image();
+          img.onload = () => {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+            
+            // Draw the loaded image
+            ctx.drawImage(img, 0, 0);
+            
+            // Save the loaded state to history
+            saveCanvasState();
+          };
+          img.src = savedCanvasData;
+      } catch (error) {
+        console.error('Error loading canvas data:', error);
+      }
+    };
+    
+    if (ctx && canvasRef.current) {
+      loadCanvasData();
+    }
+  }, [ctx, taskStatusId]);
 
   useEffect(() => {
     if (ctx && canvasRef.current) {
@@ -465,10 +529,17 @@ export default function Whiteboard({ taskStatusId }: WhiteboardProps) {
           </Button>
         </div>
 
-        <Button variant="outline" size="sm" className="ml-auto" onClick={clearCanvas}>
+        <Button variant="outline" size="sm" onClick={clearCanvas}>
           <Trash2 className="h-4 w-4 mr-1" /> 
           <span className="hidden sm:inline">Clear</span>
         </Button>
+        
+        {taskStatusId && (
+          <Button variant="outline" size="sm" className="ml-auto" onClick={saveToDatabase} title="Save to database">
+            <Save className="h-4 w-4 mr-1" /> 
+            <span className="hidden sm:inline">Save</span>
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 relative bg-white" ref={containerRef}>

@@ -59,6 +59,15 @@ export default function AnswerSubmission({
   const handleSubmit = async () => {
     setIsLoading(true)
     
+    // Save canvas state before submitting answer
+    if (taskType === "open" && typeof window !== 'undefined' && window.saveWhiteboardCanvas) {
+      try {
+        await window.saveWhiteboardCanvas();
+      } catch (error) {
+        console.error('Error saving canvas:', error);
+      }
+    }
+    
     let answer
     let isCorrect = false
     let earnedPoints = 0
